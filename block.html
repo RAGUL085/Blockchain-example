@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Example</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f4f4f4;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .btn {
+            margin-top: 10px;
+        }
+        .blockchain {
+            margin-top: 30px;
+        }
+        .chain {
+            margin-bottom: 30px;
+        }
+        .block {
+            border: 1px solid #007BFF;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .arrow {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Blockchain Example</h1>
+        <div class="form-group">
+            <label for="studentName">Student Name:</label>
+            <input type="text" id="studentName" class="form-control" placeholder="Enter student name">
+        </div>
+        <div class="form-group">
+            <label for="details">Details:</label>
+            <input type="text" id="details" class="form-control" placeholder="Enter details">
+        </div>
+        <div class="form-group">
+            <label for="chains">Select Chains:</label>
+            <select id="chains" class="form-control" multiple>
+                <option value="hostel_chain">Hostel Chain</option>
+                <option value="college_chain">College Chain</option>
+                <option value="family_chain">Family Chain</option>
+                <option value="company_chain">Company Chain</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="initializeBlockchain()">Initialize Blockchain</button>
+        <button class="btn btn-success" onclick="addBlock()">Add Block</button>
+        <button class="btn btn-info" onclick="printChains()">Print Chains</button>
+        <div id="output" class="blockchain"></div>
+    </div>
+
+    <script>
+        class Blockchain {
+            constructor() {
+                this.hostel_chain = [];
+                this.college_chain = [];
+                this.family_chain = [];
+                this.company_chain = [];
+            }
+
+            async initializeGenesisBlock(chain, studentName, details) {
+                const block = {
+                    index: chain.length + 1,
+                    timestamp: Date.now(),
+                    data: {
+                        student_name: studentName,
+                        details: details || 'Genesis Block'
+                    },
+                    proof: 100,
+                    previous_hash: '1'
+                };
+                chain.push(block);
+            }
+
+            async newBlock(chain, studentName, details, proof, previousHash = null) {
+                const previousBlock = chain[chain.length - 1];
+                const block = {
+                    index: chain.length + 1,
+                    timestamp: Date.now(),
+                    data: {
+                        student_name: studentName,
+                        details: details
+                    },
+                    proof: proof,
+                    previous_hash: previousHash || await this.hash(previousBlock)
+                };
+                chain.push(block);
+                return block;
+            }
+
+            async hash(block) {
+                const blockString = JSON.stringify(block);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(blockString));
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return hashHex;
+            }
+
+            displayChain(chainName, chain) {
+                const outputDiv = document.getElementById('output');
+                const chainDiv = document.createElement('div');
+                chainDiv.className = 'chain';
+
+                const title = document.createElement('h2');
+                title.innerText = `${chainName} Chain`;
+                chainDiv.appendChild(title);
+
+                chain.forEach(block => {
+                    const blockDiv = document.createElement('div');
+                    blockDiv.className = 'block';
+
+                    blockDiv.innerHTML = `
+                        <p><strong>Index:</strong> ${block.index}</p>
+                        <p><strong>Timestamp:</strong> ${new Date(block.timestamp).toLocaleString()}</p>
+                        <p><strong>Student Name:</strong> ${block.data.student_name}</p>
+                        <p><strong>Details:</strong> ${JSON.stringify(block.data.details, null, 2)}</p>
+                        <p><strong>Proof:</strong> ${block.proof}</p>
+                        <p><strong>Previous Hash:</strong> ${block.previous_hash}</p>
+                    `;
+
+                    chainDiv.appendChild(blockDiv);
+
+                    if (block !== chain[chain.length - 1]) {
+                        const arrowDiv = document.createElement('div');
+                        arrowDiv.className = 'arrow';
+                        arrowDiv.innerHTML = '&darr;';
+                        chainDiv.appendChild(arrowDiv);
+                    }
+                });
+
+                outputDiv.appendChild(chainDiv);
+            }
+        }
+
+        let blockchain;
+
+        async function initializeBlockchain() {
+            blockchain = new Blockchain();
+            const studentName = document.getElementById('studentName').value;
+            const details = document.getElementById('details').value;
+            const chains = Array.from(document.getElementById('chains').selectedOptions).map(option => option.value);
+
+            if (!studentName || chains.length === 0) {
+                alert("Please enter the student name and select at least one chain.");
+                return;
+            }
+
+            for (const chainName of chains) {
+                await blockchain.initializeGenesisBlock(blockchain[chainName], studentName, details);
+            }
+
+            document.getElementById('output').innerText = "Blockchain initialized with genesis blocks.\n";
+        }
+
+        async function addBlock() {
+            const studentName = document.getElementById('studentName').value;
+            const details = document.getElementById('details').value;
+            const chains = Array.from(document.getElementById('chains').selectedOptions).map(option => option.value);
+
+            if (!studentName || !details || chains.length === 0) {
+                alert("Please enter the student name, details and select at least one chain.");
+                return;
+            }
+
+            for (const chainName of chains) {
+                const chain = blockchain[chainName];
+                const proof = Math.floor(Math.random() * 1000); // Random proof for demonstration
+
+                await blockchain.newBlock(chain, studentName, details, proof);
+            }
+
+            document.getElementById('output').innerText += "Block added to the selected chains.\n";
+        }
+
+        async function printChains() {
+            document.getElementById('output').innerText = "";
+            blockchain.displayChain("Hostel", blockchain.hostel_chain);
+            blockchain.displayChain("College", blockchain.college_chain);
+            blockchain.displayChain("Family", blockchain.family_chain);
+            blockchain.displayChain("Company", blockchain.company_chain);
+        }
+    </script>
+</body>
+</html>
